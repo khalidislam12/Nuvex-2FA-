@@ -1,0 +1,838 @@
+```html
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuvex 2FA - Premium Security & TOTP Code Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Hind Siliguri for Bengali -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- QRCode JS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfeff',
+                            100: '#cffafe',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            accent: '#8b5cf6',
+                            purple: '#a855f7',
+                            dark: '#0b0f19',
+                            card: '#131b2e',
+                            border: 'rgba(255, 255, 255, 0.08)'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(6, 182, 212, 0.3)' },
+                            '100%': { boxShadow: '0 0 30px rgba(139, 92, 246, 0.6)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            font-family: 'Inter', 'Hind Siliguri', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-input {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        .glass-input:focus {
+            border-color: #06b6d4;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+            outline: none;
+        }
+
+        .neon-btn {
+            background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .neon-btn:hover {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 30px rgba(139, 92, 246, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #22d3ee 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Circular Progress Styling */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.1s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full opacity-0 transition-all duration-300 ease-out flex items-center space-x-3 bg-slate-900 border border-brand-500/50 text-white px-5 py-3.5 rounded-xl shadow-2xl backdrop-blur-md">
+        <i id="toast-icon" class="fas fa-check-circle text-brand-400 text-xl"></i>
+        <div>
+            <div id="toast-title" class="font-bold text-sm">সফল হয়েছে!</div>
+            <div id="toast-msg" class="text-xs text-gray-300">কোড ক্লিপবোর্ডে কপি করা হয়েছে।</div>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 glass-panel border-b border-white/5 px-4 lg:px-8 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-brand-accent flex items-center justify-center shadow-lg shadow-brand-500/30">
+                    <i class="fas fa-shield-halved text-xl text-white"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl font-black tracking-wider gradient-text font-mono">NUVEX<span class="text-white">2FA</span></span>
+                        <span class="bg-gradient-to-r from-amber-500 to-yellow-300 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">PREMIUM</span>
+                    </div>
+                    <p class="text-[11px] text-gray-400 tracking-wide hidden sm:block">Next-Gen Two-Factor Authentication</p>
+                </div>
+            </div>
+
+            <!-- Header Status Indicator & Quick Info -->
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 bg-slate-900/80 px-3.5 py-1.5 rounded-full border border-white/10 text-xs">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-gray-300 font-medium text-xs">Live Engine</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full space-y-8">
+
+        <!-- Top Grid: Main Generator + Secret Tool -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Side: Main TOTP Live Code Generator (8 Cols) -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                    <!-- Background Subtle Glow -->
+                    <div class="absolute -right-16 -top-16 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2.5">
+                            <i class="fas fa-key text-brand-400"></i>
+                            <span>২এফএ কোড জেনারেটর (2FA Live OTP)</span>
+                        </h2>
+                        <button onclick="clearSingleGenerator()" class="text-xs text-gray-400 hover:text-red-400 transition flex items-center gap-1">
+                            <i class="fas fa-rotate-left"></i> ক্লিয়ার
+                        </button>
+                    </div>
+
+                    <!-- Input Form -->
+                    <div class="space-y-4">
+                        <div>
+                            <label for="secretInput" class="block text-xs font-semibold text-gray-300 mb-2 uppercase tracking-wider">
+                                ২এফএ সিক্রেট কি প্রবেশ করান (2FA Secret Key)
+                            </label>
+                            <div class="relative">
+                                <input type="text" id="secretInput" placeholder="যেমন: JBSWY3DPEHPK3PXP" 
+                                    class="w-full glass-input rounded-xl px-4 py-3.5 pr-28 text-sm sm:text-base font-mono uppercase tracking-wider focus:ring-0 placeholder:text-gray-600">
+                                
+                                <div class="absolute right-2 top-2 flex items-center space-x-1">
+                                    <button onclick="pasteFromClipboard()" title="প্যাস্ট করুন" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded-lg text-xs transition border border-white/10">
+                                        <i class="fas fa-paste"></i> Paste
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap sm:flex-nowrap gap-3">
+                            <button onclick="generateOTPManually()" class="w-full neon-btn text-white font-bold py-3.5 px-6 rounded-xl text-sm flex items-center justify-center space-x-2 shadow-lg cursor-pointer">
+                                <i class="fas fa-bolt"></i>
+                                <span>কোড তৈরি করুন (Generate OTP)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- OTP Output Card -->
+                    <div id="otpDisplaySection" class="mt-8 pt-6 border-t border-white/10">
+                        <div class="bg-slate-950/80 rounded-2xl p-6 border border-brand-500/20 relative flex flex-col sm:flex-row items-center justify-between gap-6 shadow-inner">
+                            
+                            <!-- Left: OTP Code -->
+                            <div class="text-center sm:text-left space-y-1">
+                                <span class="text-xs text-gray-400 uppercase tracking-widest font-semibold">আপনার সিকিউরিটি কোড (Live Code)</span>
+                                <div class="flex items-center gap-3">
+                                    <span id="otpOutput" class="text-4xl sm:text-5xl font-black font-mono tracking-widest gradient-text">
+                                        ------
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-gray-500 italic" id="keyStatus">যেকোনো Base32 কি দিয়ে কোড জেনারেট করুন</p>
+                            </div>
+
+                            <!-- Middle/Right: Circular Countdown & Copy Button -->
+                            <div class="flex items-center space-x-5">
+                                <!-- Countdown Ring -->
+                                <div class="relative flex items-center justify-center">
+                                    <svg class="w-16 h-16">
+                                        <circle class="text-slate-800" stroke-width="4" stroke="currentColor" fill="transparent" r="26" cx="32" cy="32"/>
+                                        <circle id="timerRing" class="progress-ring__circle text-brand-400" stroke-width="4" stroke-dasharray="163.36" stroke-dashoffset="0" stroke-linecap="round" stroke="currentColor" fill="transparent" r="26" cx="32" cy="32"/>
+                                    </svg>
+                                    <span id="timerText" class="absolute font-mono font-bold text-sm text-brand-400">30s</span>
+                                </div>
+
+                                <!-- Copy Button -->
+                                <button onclick="copyOTP()" id="copyBtn" class="bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/40 text-brand-400 hover:text-white p-3.5 rounded-xl transition duration-200 flex items-center justify-center shadow-md active:scale-95">
+                                    <i class="fas fa-copy text-xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Tools Box (Random Key + Quick QR Code) (5 Cols) -->
+            <div class="lg:col-span-5 space-y-6">
+                <!-- Random Secret Generator Card -->
+                <div class="glass-panel rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-wand-magic-sparkles text-brand-purple"></i>
+                            <span>র‍্যান্ডম সিক্রেট কি জেনারেটর</span>
+                        </h3>
+                        <span class="text-[10px] bg-brand-purple/20 text-brand-purple px-2 py-0.5 rounded border border-brand-purple/30 font-mono">16-Char Base32</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-4">টেস্টিং বা নতুন টু-ফ্যাক্টর সেটআপের জন্য নতুন সিক্রেট কি তৈরি করুন।</p>
+                    
+                    <div class="flex gap-2">
+                        <input type="text" id="generatedKey" readonly placeholder="এখানে কি আসবে..." 
+                            class="w-full glass-input rounded-xl px-3.5 py-2.5 text-xs font-mono text-emerald-400 tracking-wider">
+                        <button onclick="generateRandomKey()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold border border-white/10 transition whitespace-nowrap">
+                            <i class="fas fa-dice"></i> তৈরি করুন
+                        </button>
+                        <button onclick="useGeneratedKey()" title="এটি ব্যবহার করুন" class="bg-brand-500 hover:bg-brand-600 text-white px-3 py-2.5 rounded-xl text-xs transition">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- QR Code Generator Card -->
+                <div class="glass-panel rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-qrcode text-brand-400"></i>
+                            <span>QR Code জেনারেটর (Authenticator)</span>
+                        </h3>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-400 mb-1">একাউন্ট / সার্ভিস</label>
+                                <input type="text" id="qrIssuer" placeholder="Ex: Binance" value="Nuvex Account" class="w-full glass-input rounded-lg px-3 py-2 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-400 mb-1">ইউজারনেম / ইমেইল</label>
+                                <input type="text" id="qrAccount" placeholder="Ex: user@mail.com" value="user@nuvex.com" class="w-full glass-input rounded-lg px-3 py-2 text-xs">
+                            </div>
+                        </div>
+
+                        <button onclick="generateQRCode()" class="w-full bg-slate-800 hover:bg-slate-700 text-brand-400 border border-brand-500/30 hover:border-brand-500/60 font-medium py-2 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                            <i class="fas fa-qrcode"></i> QR Code তৈরি করুন
+                        </button>
+
+                        <div id="qrContainer" class="hidden flex flex-col items-center justify-center p-4 bg-white rounded-xl mt-3 text-center">
+                            <div id="qrcode" class="p-1"></div>
+                            <p class="text-[10px] text-slate-700 font-sans mt-2">Google Authenticator বা Authy দিয়ে স্ক্যান করুন</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Section: Multi-Key Manager / Saved Accounts (LocalStorage) -->
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2.5">
+                        <i class="fas fa-box-archive text-brand-accent"></i>
+                        <span>সেভ করা একাউন্ট সমূহ (Saved Accounts Vault)</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">আপনার ব্রাউজার লোকাল-স্টোরেজে সুরক্ষিতভাবে সেভ রাখা ২এফএ সিক্রেটসমূহ।</p>
+                </div>
+
+                <!-- Add New Account Modal Trigger / Quick Add -->
+                <button onclick="toggleAddModal()" class="neon-btn px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 self-start md:self-auto">
+                    <i class="fas fa-plus"></i> নতুন একাউন্ট যোগ করুন
+                </button>
+            </div>
+
+            <!-- Saved Accounts Table / Grid -->
+            <div id="savedKeysContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Dynamically populated via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyVaultMsg" class="hidden text-center py-12 border border-dashed border-white/10 rounded-2xl">
+                <i class="fas fa-shield-cat text-4xl text-gray-600 mb-3"></i>
+                <p class="text-gray-400 text-sm font-medium">কোন সেভ করা ২এফএ একাউন্ট পাওয়া যায়নি।</p>
+                <p class="text-xs text-gray-600 mt-1">উপরে 'নতুন একাউন্ট যোগ করুন' বাটনে ক্লিক করে সেভ করুন।</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal for Adding Saved Account -->
+    <div id="addModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-3xl p-6 shadow-2xl border border-white/10 relative animate-in fade-in zoom-in duration-200">
+            <button onclick="toggleAddModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-folder-plus text-brand-400"></i>
+                <span>নতুন ২এফএ কি সেভ করুন</span>
+            </h3>
+
+            <form onsubmit="saveNewKey(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-300 mb-1">একাউন্ট / প্ল্যাটফর্ম নাম</label>
+                    <input type="text" id="saveAccountName" required placeholder="যেমন: Binance, Facebook, GitHub" class="w-full glass-input rounded-xl px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-300 mb-1">২এফএ সিক্রেট কি (Secret Key)</label>
+                    <input type="text" id="saveAccountSecret" required placeholder="JBSWY3DPEHPK3PXP" class="w-full glass-input rounded-xl px-4 py-2.5 text-sm font-mono uppercase">
+                </div>
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" onclick="toggleAddModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-gray-300">বাতিল</button>
+                    <button type="submit" class="neon-btn px-5 py-2 rounded-xl text-xs font-bold text-white">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="glass-panel border-t border-white/5 py-6 px-4 mt-12">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+            <div class="flex items-center space-x-2">
+                <span class="font-bold text-gray-200">Nuvex 2FA</span>
+                <span>• Premium Client-Side Security Tool</span>
+            </div>
+            <p class="text-gray-500">আপনার সমস্ত ডেটা সম্পূর্ণ নিরাপদ এবং আপনার ব্রাউজারেই সংরক্ষিত থাকে।</p>
+        </div>
+    </footer>
+
+    <!-- JS Logic for TOTP calculation, QR code, and Storage -->
+    <script>
+        /* -------------------------------------------------------------
+           TOTP Algorithm Implementation (RFC 6238 Base32 TOTP)
+           Pure JS implementation using SHA-1
+        ------------------------------------------------------------- */
+        
+        // Base32 Decoding
+        function base32tohex(base32) {
+            const base32chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+            let bits = "";
+            let hex = "";
+
+            // Clean string
+            let cleanBase32 = base32.replace(/\s+/g, "").toUpperCase().replace(/=/g, "");
+
+            for (let i = 0; i < cleanBase32.length; i++) {
+                let val = base32chars.indexOf(cleanBase32.charAt(i));
+                if (val === -1) continue; // skip invalid chars
+                bits += leftpad(val.toString(2), 5, '0');
+            }
+
+            for (let i = 0; i + 4 <= bits.length; i += 4) {
+                let chunk = bits.substr(i, 4);
+                hex = hex + parseInt(chunk, 2).toString(16);
+            }
+            return hex;
+        }
+
+        function leftpad(str, len, pad) {
+            if (len + 1 >= str.length) {
+                str = Array(len + 1 - str.length).join(pad || '0') + str;
+            }
+            return str;
+        }
+
+        // Lightweight SHA-1 Implementation
+        function sha1(a){
+            var crypto = window.crypto || window.msCrypto;
+            // Native crypto sub-library fallback or simple HMAC implementation
+        }
+
+        // HMAC-SHA1 in Pure JS
+        function hmacSha1(keyHex, messageHex) {
+            // Convert Hex to Bytes
+            function hexToBytes(hex) {
+                let bytes = [];
+                for (let c = 0; c < hex.length; c += 2)
+                    bytes.push(parseInt(hex.substr(c, 2), 16));
+                return bytes;
+            }
+
+            // Simple SHA-1 Function
+            function coreSha1(x, len) {
+                x[len >> 5] |= 0x80 << (24 - len % 32);
+                x[((len + 64 >> 9) << 4) + 15] = len;
+
+                var w = Array(80), a = 1732584193, b = -271733879, c = -1732584194, d = 271733878, e = -1009589776;
+
+                for (var i = 0; i < x.length; i += 16) {
+                    var olda = a, oldb = b, oldc = c, oldd = d, olde = e;
+                    for (var j = 0; j < 80; j++) {
+                        if (j < 16) w[j] = x[i + j];
+                        else w[j] = rol(w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16], 1);
+                        var t = safeAdd(safeAdd(rol(a, 5), sha1Ft(j, b, c, d)), safeAdd(safeAdd(e, w[j]), sha1Kt(j)));
+                        e = d; d = c; c = rol(b, 30); b = a; a = t;
+                    }
+                    a = safeAdd(a, olda); b = safeAdd(b, oldb); c = safeAdd(c, oldc); d = safeAdd(d, oldd); e = safeAdd(e, olde);
+                }
+                return [a, b, c, d, e];
+            }
+
+            function sha1Ft(t, b, c, d) {
+                if (t < 20) return (b & c) | ((~b) & d);
+                if (t < 40) return b ^ c ^ d;
+                if (t < 60) return (b & c) | (b & d) | (c & d);
+                return b ^ c ^ d;
+            }
+
+            function sha1Kt(t) {
+                return (t < 20) ? 1518500249 : (t < 40) ? 1859775393 : (t < 60) ? -1894007588 : -899497514;
+            }
+
+            function safeAdd(x, y) {
+                var lsw = (x & 0xFFFF) + (y & 0xFFFF), msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+                return (msw << 16) | (lsw & 0xFFFF);
+            }
+
+            function rol(num, cnt) {
+                return (num << cnt) | (num >>> (32 - cnt));
+            }
+
+            function bytesToWords(bytes) {
+                var words = [];
+                for (var i = 0; i < bytes.length; i++) {
+                    words[i >> 2] |= bytes[i] << (24 - (i % 4) * 8);
+                }
+                return words;
+            }
+
+            function wordsToHex(words) {
+                var hex = "";
+                for (var i = 0; i < words.length * 4; i++) {
+                    hex += "0123456789abcdef".charAt((words[i >> 2] >> ((3 - i % 4) * 8 + 4)) & 0xF) +
+                           "0123456789abcdef".charAt((words[i >> 2] >> ((3 - i % 4) * 8)) & 0xF);
+                }
+                return hex;
+            }
+
+            let k = hexToBytes(keyHex);
+            let m = hexToBytes(messageHex);
+
+            if (k.length > 64) {
+                k = hexToBytes(wordsToHex(coreSha1(bytesToWords(k), k.length * 8)));
+            }
+            while (k.length < 64) {
+                k.push(0);
+            }
+
+            let oKeyPad = [], iKeyPad = [];
+            for (let i = 0; i < 64; i++) {
+                oKeyPad[i] = k[i] ^ 0x5c;
+                iKeyPad[i] = k[i] ^ 0x36;
+            }
+
+            let innerHash = coreSha1(bytesToWords(iKeyPad.concat(m)), (64 + m.length) * 8);
+            let innerBytes = hexToBytes(wordsToHex(innerHash));
+            let outerHash = coreSha1(bytesToWords(oKeyPad.concat(innerBytes)), (64 + 20) * 8);
+
+            return wordsToHex(outerHash);
+        }
+
+        // TOTP Code Calculation Function
+        function getTOTP(secret) {
+            try {
+                if (!secret || secret.trim() === '') return '------';
+                let keyHex = base32tohex(secret);
+                if (!keyHex) return '------';
+
+                let epoch = Math.floor(Date.now() / 1000);
+                let timeHex = leftpad(Math.floor(epoch / 30).toString(16), 16, '0');
+
+                let hmac = hmacSha1(keyHex, timeHex);
+                let offset = parseInt(hmac.substring(hmac.length - 1), 16);
+                let otp = (parseInt(hmac.substr(offset * 2, 8), 16) & 0x7fffffff) + '';
+                otp = otp.substr(otp.length - 6, 6);
+                return otp.padStart(6, '0');
+            } catch (err) {
+                return 'ERROR';
+            }
+        }
+
+        /* -------------------------------------------------------------
+           Application Logic & UI Dynamic Updates
+        ------------------------------------------------------------- */
+        let savedAccounts = JSON.parse(localStorage.getItem('nuvex_2fa_accounts') || '[]');
+
+        window.onload = function() {
+            // Start main tick interval
+            setInterval(updateTOTPTimers, 1000);
+            updateTOTPTimers();
+            renderSavedKeys();
+
+            // Event listener for main input
+            document.getElementById('secretInput').addEventListener('input', function() {
+                generateOTPManually();
+            });
+        };
+
+        // Main Timer Loop (Updates every second)
+        function updateTOTPTimers() {
+            let epoch = Math.floor(Date.now() / 1000);
+            let secondsRemaining = 30 - (epoch % 30);
+
+            // Update Progress Ring
+            let circle = document.getElementById('timerRing');
+            let radius = circle.r.baseVal.value;
+            let circumference = 2 * Math.PI * radius;
+            let offset = circumference - (secondsRemaining / 30) * circumference;
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = offset;
+
+            // Timer Text
+            document.getElementById('timerText').innerText = `${secondsRemaining}s`;
+
+            // Auto Refresh Live OTP Code if secret is entered
+            let secret = document.getElementById('secretInput').value.trim();
+            if (secret.length >= 8) {
+                let code = getTOTP(secret);
+                document.getElementById('otpOutput').innerText = formatOTP(code);
+                document.getElementById('keyStatus').innerText = "সক্রিয় রয়েছে (Auto Syncing)";
+                document.getElementById('keyStatus').className = "text-[11px] text-emerald-400 font-medium";
+            } else if (secret.length === 0) {
+                document.getElementById('otpOutput').innerText = '------';
+                document.getElementById('keyStatus').innerText = "যেকোনো Base32 কি দিয়ে কোড জেনারেট করুন";
+                document.getElementById('keyStatus').className = "text-[11px] text-gray-500 italic";
+            }
+
+            // Update Saved Vault Codes
+            updateSavedVaultCodes();
+        }
+
+        // Format OTP with Space (e.g. 123 456)
+        function formatOTP(otp) {
+            if (otp.length === 6) {
+                return otp.substring(0, 3) + " " + otp.substring(3, 6);
+            }
+            return otp;
+        }
+
+        function generateOTPManually() {
+            let secret = document.getElementById('secretInput').value.trim();
+            if(!secret) {
+                showToast("সতর্কতা", "দয়া করে একটি সঠিক সিক্রেট কি প্রবেশ করান।", "text-amber-400");
+                return;
+            }
+            let code = getTOTP(secret);
+            if (code === 'ERROR' || code === '------') {
+                showToast("ত্রুটি", "অকার্যকর সিক্রেট কি। Base32 ফরম্যাট চেক করুন।", "text-red-400");
+                document.getElementById('otpOutput').innerText = 'ERROR';
+            } else {
+                document.getElementById('otpOutput').innerText = formatOTP(code);
+            }
+        }
+
+        function clearSingleGenerator() {
+            document.getElementById('secretInput').value = '';
+            document.getElementById('otpOutput').innerText = '------';
+            document.getElementById('keyStatus').innerText = "যেকোনো Base32 কি দিয়ে কোড জেনারেট করুন";
+            document.getElementById('keyStatus').className = "text-[11px] text-gray-500 italic";
+        }
+
+        // Copy Main OTP Code
+        function copyOTP() {
+            let code = document.getElementById('otpOutput').innerText.replace(/\s+/g, '');
+            if (code === '------' || code === 'ERROR') {
+                showToast("ত্রুটি", "কপি করার মত বৈধ কোনো কোড নেই!", "text-red-400");
+                return;
+            }
+
+            copyToClipboardText(code);
+            showToast("কপি করা হয়েছে!", `কোড: ${code} সফলভাবে কপি করা হয়েছে।`, "text-brand-400");
+        }
+
+        // Paste from Clipboard Function
+        function pasteFromClipboard() {
+            navigator.clipboard.readText().then(text => {
+                document.getElementById('secretInput').value = text.trim();
+                generateOTPManually();
+                showToast("প্যাস্ট হয়েছে", "সিক্রেট কি প্যাস্ট করা হয়েছে।", "text-brand-400");
+            }).catch(err => {
+                showToast("ত্রুটি", "ক্লিপবোর্ড থেকে পড়তে ব্যর্থ হয়েছে।", "text-red-400");
+            });
+        }
+
+        /* -------------------------------------------------------------
+           Random Key Generator Tool
+        ------------------------------------------------------------- */
+        function generateRandomKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let result = '';
+            for (let i = 0; i < 16; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('generatedKey').value = result;
+            showToast("নতুন কি তৈরি হয়েছে", "১৬-অক্ষরের র্যান্ডম কি জেনারেট করা হয়েছে।", "text-brand-purple");
+        }
+
+        function useGeneratedKey() {
+            let genKey = document.getElementById('generatedKey').value;
+            if (!genKey) {
+                generateRandomKey();
+                genKey = document.getElementById('generatedKey').value;
+            }
+            document.getElementById('secretInput').value = genKey;
+            generateOTPManually();
+            showToast("সফল", "জেনারেটেড কি প্রধান ফর্ম-এ যুক্ত করা হয়েছে।", "text-brand-400");
+        }
+
+        /* -------------------------------------------------------------
+           QR Code Generator Tool
+        ------------------------------------------------------------- */
+        let qrObj = null;
+        function generateQRCode() {
+            let secret = document.getElementById('secretInput').value.trim() || document.getElementById('generatedKey').value.trim();
+            let issuer = document.getElementById('qrIssuer').value.trim() || 'Nuvex';
+            let account = document.getElementById('qrAccount').value.trim() || 'User';
+
+            if (!secret) {
+                showToast("সতর্কতা", "QR কোডের জন্য একটি সিক্রেট কি প্রয়োজন!", "text-amber-400");
+                return;
+            }
+
+            // OTPAuth URL Format: otpauth://totp/Issuer:Account?secret=SECRET&issuer=Issuer
+            let otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${encodeURIComponent(secret)}&issuer=${encodeURIComponent(issuer)}`;
+
+            let container = document.getElementById('qrContainer');
+            let qrDiv = document.getElementById('qrcode');
+            qrDiv.innerHTML = '';
+
+            qrObj = new QRCode(qrDiv, {
+                text: otpauthUrl,
+                width: 140,
+                height: 140,
+                colorDark: "#0b0f19",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+
+            container.classList.remove('hidden');
+            showToast("QR Code প্রস্তুত", "Google Authenticator দিয়ে স্ক্যান করতে পারেন।", "text-brand-400");
+        }
+
+        /* -------------------------------------------------------------
+           Saved Multi-Key Vault (LocalStorage Manager)
+        ------------------------------------------------------------- */
+        function toggleAddModal() {
+            let modal = document.getElementById('addModal');
+            modal.classList.toggle('hidden');
+        }
+
+        function saveNewKey(e) {
+            e.preventDefault();
+            let name = document.getElementById('saveAccountName').value.trim();
+            let secret = document.getElementById('saveAccountSecret').value.trim().replace(/\s+/g, '').toUpperCase();
+
+            if (!name || !secret) return;
+
+            savedAccounts.push({
+                id: Date.now(),
+                name: name,
+                secret: secret
+            });
+
+            localStorage.setItem('nuvex_2fa_accounts', JSON.stringify(savedAccounts));
+            
+            // Reset & Close
+            document.getElementById('saveAccountName').value = '';
+            document.getElementById('saveAccountSecret').value = '';
+            toggleAddModal();
+            renderSavedKeys();
+
+            showToast("সেভ হয়েছে!", `${name} সফলভাবে একাউন্ট তালিকায় যুক্ত হয়েছে।`, "text-emerald-400");
+        }
+
+        function deleteKey(id) {
+            savedAccounts = savedAccounts.filter(acc => acc.id !== id);
+            localStorage.setItem('nuvex_2fa_accounts', JSON.stringify(savedAccounts));
+            renderSavedKeys();
+            showToast("ডিলিট হয়েছে", "একাউন্ট রিমুভ করা হয়েছে।", "text-red-400");
+        }
+
+        function renderSavedKeys() {
+            let container = document.getElementById('savedKeysContainer');
+            let emptyMsg = document.getElementById('emptyVaultMsg');
+
+            if (savedAccounts.length === 0) {
+                container.innerHTML = '';
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+
+            emptyMsg.classList.add('hidden');
+            container.innerHTML = '';
+
+            savedAccounts.forEach(acc => {
+                let currentCode = getTOTP(acc.secret);
+                let formattedCode = formatOTP(currentCode);
+
+                let card = document.createElement('div');
+                card.className = "bg-slate-900/90 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg relative group hover:border-brand-500/40 transition";
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-sm text-white">${escapeHtml(acc.name)}</span>
+                        </div>
+                        <div class="text-xl font-bold font-mono text-brand-400 tracking-wider card-code" id="vault-code-${acc.id}">
+                            ${formattedCode}
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-1">
+                        <button onclick="copyVaultCode('${currentCode}')" class="p-2.5 bg-slate-800 hover:bg-brand-500/20 text-gray-300 hover:text-brand-400 rounded-xl transition text-xs" title="কোড কপি করুন">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button onclick="deleteKey(${acc.id})" class="p-2.5 bg-slate-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-xl transition text-xs" title="মুছে ফেলুন">
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateSavedVaultCodes() {
+            savedAccounts.forEach(acc => {
+                let codeEl = document.getElementById(`vault-code-${acc.id}`);
+                if (codeEl) {
+                    let code = getTOTP(acc.secret);
+                    codeEl.innerText = formatOTP(code);
+                }
+            });
+        }
+
+        function copyVaultCode(code) {
+            copyToClipboardText(code);
+            showToast("কপি করা হয়েছে!", `কোড: ${code}`, "text-brand-400");
+        }
+
+        /* -------------------------------------------------------------
+           Helper Functions
+        ------------------------------------------------------------- */
+        function copyToClipboardText(text) {
+            // Using fallback copy method for iframe compatibility
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Copy fallback failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(title, message, iconColorClass = "text-brand-400") {
+            let toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = message;
+            
+            let icon = document.getElementById('toast-icon');
+            icon.className = `fas fa-check-circle text-xl ${iconColorClass}`;
+
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            toast.classList.add('translate-x-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-0', 'opacity-100');
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
+```
